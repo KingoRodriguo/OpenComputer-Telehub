@@ -14,15 +14,17 @@ local function ensureDir(path)
   if not fs.exists(dir) then fs.makeDirectory(dir) end
 end
 
-local function http_get(url, timeout)
-  if not internet then return nil, "no_internet_card" end
-  local handle, reason = internet.request(url)
-  if not handle then return nil, reason end
-  local data = ""
-  local deadline = computer.uptime() + (timeout or 15)
+local function http_get(url,timeout)
+  if not internet then return nil,"no_internet_card" end
+  local handle,reason=internet.request(url)
+  if not handle then
+    io.write("[!] No handle ! Reason: ",tostring(reason),"\n")
+    return nil,reason
+  end
+  local data=""; local deadline=computer.uptime()+(timeout or 20)
   for chunk in handle do
-    if chunk then data = data .. chunk end
-    if timeout and computer.uptime() > deadline then return nil, "timeout" end
+    if chunk then data=data..chunk end
+    if timeout and computer.uptime()>deadline then return nil,"timeout" end
   end
   return data
 end
