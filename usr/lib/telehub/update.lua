@@ -136,19 +136,43 @@ end
 
 -- ——— téléchargement & application ————————————————————————————————
 
+local function ensureDirForFile(p)
+  local d = fs.path(p)
+  if d and not fs.exists(d) then fs.makeDirectory(d) end
+end
+
 local function downloadTo(path, url, timeout)
+  -- télécharge
   local data, err = http_get(url, timeout)
-  if not data then return false, err end
+  if not data or #data == 0 then return false, "download_empty:"..tostring(err) end
+
+  -- prépare le dossier et le .new
   ensureDirForFile(path)
   local tmp = path .. ".new"
-  local f = assert(io.open(tmp, "w")); f:write(data); f:close()
+  local f = assert(io.open(tmp, "w"))
+  f:write(data)
+  f:close()
+
+  -- backup ancien fichier (si présent)
   if fs.exists(path) then
     pcall(fs.remove, path..".bak")
-    pcall(fs.rename, path, path..".bak")
+    assert(fs.rename(path, path..".bak"), "backup_rename_failed")
   end
-  pcall(fs.rename, tmp, path)
+
+  -- rename atomique du .new -> path (NE PAS ignorer l'erreur)
+  assert(fs.rename(tmp, path), "final_rename_failed")
+
+  -- vérification post-écriture
+  local rf = assert(io.open(path, "r"))
+  local got = rf:read("*a") or ""
+  rf:close()
+  if #got ~= #data then
+    return false, "post_verify_size_mismatch"
+  end
+
   return true
 end
+
 
 function M.apply(cfg, manifest)
   if not manifest or type(manifest.files) ~= "table" then return false, "no_files" end
@@ -161,13 +185,16 @@ function M.apply(cfg, manifest)
   for src, dst in pairs(manifest.files) do
     local url = repo .. "/" .. src
     local ok, err = downloadTo(dst, url, timeout)
-    if not ok then return false, "download_failed: "..tostring(src).." ("..tostring(err)..")" end
+    if not ok then
+      return false, "apply_failed: "..src.." -> "..dst.." ("..tostring(err)..")"
+    end
     changed = true
   end
 
   if manifest.version then M.setLocalVersion(manifest.version) end
   return changed
 end
+
 
 -- ——— workflow d’auto-update ————————————————————————————————
 
