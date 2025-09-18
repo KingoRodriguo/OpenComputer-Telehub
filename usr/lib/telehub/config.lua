@@ -29,7 +29,7 @@ M.DEFAULT = {
   UPDATE = {
     AUTO = "apply", -- "off"|"check"|"apply"
     REPO = "https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main",
-    MANIFEST = "telehub_manifest.lua",
+    MANIFEST = "manifest.lua",
     TIMEOUT = 15,
   },
 }
