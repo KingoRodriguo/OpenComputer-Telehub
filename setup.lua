@@ -48,20 +48,20 @@ local function fetchManifest()
   local body, err = http_get(url, 20)
   assert(body, "manifest http error: "..tostring(err))
 
-  -- debug: montre les 100 premiers caractères (utile si c’est du HTML/404)
-  io.write("[debug] head: ", (body:sub(1,100):gsub("%s"," ")), "\n")
-
-  local tmp = "/tmp/_telehub_manifest.lua"
-  local f = assert(io.open(tmp, "w")); f:write(body); f:close()
+  local tmp = "/home/_telehub_manifest.lua"  -- compatible OpenOS
+  local f = assert(io.open(tmp, "w"))
+  f:write(body)
+  f:close()
 
   local ok, t = pcall(dofile, tmp)
   pcall(fs.remove, tmp)
 
   assert(ok, "manifest syntax error: "..tostring(t))
-  assert(type(t) == "table", "manifest must return a table")
-  assert(type(t.files) == "table", "manifest.files must be a table")
+  assert(type(t)=="table", "manifest must return a table")
+  assert(type(t.files)=="table", "manifest.files must be a table")
   return t
 end
+
 
 
 local function downloadTo(path,url)

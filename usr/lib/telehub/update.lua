@@ -63,7 +63,7 @@ function M.fetchManifest(cfg)
   local url = repo .. "/" .. manifest
   local body, err = http_get(url, cfg.UPDATE.TIMEOUT or 15)
   if not body then return nil, err end
-  local tmp = "/tmp/_manifest.lua"
+  local tmp = "/home/_telehub_manifest.lua"
   local f = assert(io.open(tmp, "w")); f:write(body); f:close()
   local ok, t = pcall(dofile, tmp)
   pcall(fs.remove, tmp)
