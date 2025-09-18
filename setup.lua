@@ -38,20 +38,59 @@ local function ensureDirForFile(path)
 end
 
 local function http_get(url, timeout)
-  if not internet then return nil, "no_internet_card" end
-  log("HTTP GET "..url)
-  local handle, reason = internet.request(url, nil, {["User-Agent"]="telehub-setup"})
-  if not handle then return nil, reason end
-  local data = ""
-  local deadline = computer.uptime() + (timeout or 20)
-  for chunk in handle do
-    if chunk then data = data .. chunk end
-    if timeout and computer.uptime() > deadline then
-      return nil, "timeout"
+  local deadline = (computer.uptime() + (timeout or 20))
+
+  -- 1) Priorité au module 'internet' (meilleure prise en charge HTTPS/TLS/SNI)
+  local ok_lib, inet = pcall(require, "internet")
+  if ok_lib and inet and type(inet.request) == "function" then
+    -- L’API renvoie un itérateur (request handle)
+    local it, reason = inet.request(url, nil, {["User-Agent"]="telehub"})
+    if not it then return nil, reason or "request_failed" end
+
+    -- Si disponible, essayons de lire le status/headers
+    local status, respHeaders
+    if type(it.response) == "function" then
+      status, respHeaders = it:response()  -- peut être nil tant que pas connecté
+    end
+
+    local data = ""
+    for chunk in it do
+      if chunk then data = data .. chunk end
+      if timeout and computer.uptime() > deadline then
+        return nil, "timeout"
+      end
+      if not status and type(it.response) == "function" then
+        status, respHeaders = it:response()
+      end
+    end
+
+    -- Si on a pu lire un status HTTP, vérifions-le
+    if status and (status < 200 or status >= 300) then
+      return nil, "http_status_"..tostring(status)
+    end
+    if #data == 0 then
+      -- On tente un fallback bas niveau si le corps est vide
+    else
+      return data
     end
   end
-  log("Downloaded "..tostring(#data).." bytes")
-  return data
+
+  -- 2) Fallback composant bas niveau (moins fiable en HTTPS selon env)
+  local ok_comp, comp = pcall(require, "component")
+  if ok_comp and comp and comp.internet and type(comp.internet.request) == "function" then
+    local handle, reason = comp.internet.request(url, nil, {["User-Agent"]="telehub"})
+    if not handle then return nil, reason or "request_failed" end
+    local data = ""
+    for chunk in handle do
+      if chunk then data = data .. chunk end
+      if timeout and computer.uptime() > deadline then
+        return nil, "timeout"
+      end
+    end
+    if #data > 0 then return data end
+  end
+
+  return nil, "empty_response"
 end
 
 local function writeFile(path, content)
