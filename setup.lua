@@ -1,49 +1,60 @@
--- install.lua : installe/maj telehub-node depuis un repo GitHub (raw)
--- Usage:
---   install.lua --repo https://raw.githubusercontent.com/<owner>/<repo>/main [--manifest manifest.lua] [--auto off|check|apply]
-local component=require("component")
-local fs=require("filesystem")
-local computer=require("computer")
+-- /home/setup.lua
+-- Installe/Met à jour telehub-node depuis un repo GitHub (raw).
+-- Usage :
+--   setup --repo https://raw.githubusercontent.com/<owner>/<repo>/main --manifest manifest.lua --auto apply
 
-local internet=component.internet
-local args={...}
-local function getArg(flag,def)
+local component = require("component")
+local fs        = require("filesystem")
+local computer  = require("computer")
+
+local internet = component.internet  -- nécessite Internet Card
+
+-- ——— parse args ————————————————————————————————————————————————————
+local args = {...}
+local function getArg(flag, def)
   for i=1,#args do
-    if args[i]==flag and args[i+1] then return args[i+1] end
-    local v=args[i]:match("^"..flag.."=(.+)$"); if v then return v end
+    if args[i] == flag and args[i+1] then return args[i+1] end
+    local v = args[i]:match("^"..flag.."=(.+)$")
+    if v then return v end
   end
   return def
 end
 
-local REPO=getArg("--repo","https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main")
-local MANIFEST=getArg("--manifest","manifest.lua")
-local AUTO=getArg("--auto","apply") -- off|check|apply
+local REPO     = getArg("--repo",     "https://raw.githubusercontent.com/<owner>/<repo>/main")
+local MANIFEST = getArg("--manifest", "manifest.lua")
+local AUTO     = getArg("--auto",     "check")  -- off|check|apply
 
-local function ensureDir(path)
-  local dir=fs.path(path) or "/"
-  if not fs.exists(dir) then assert(fs.makeDirectory(dir)) end
+-- ——— util ————————————————————————————————————————————————————————
+local function ensureDirForFile(path)
+  local dir = fs.path(path)
+  if dir and not fs.exists(dir) then
+    assert(fs.makeDirectory(dir))
+  end
 end
 
-local function http_get(url,timeout)
-  if not internet then return nil,"no_internet_card" end
-  local handle,reason=internet.request(url)
-  if not handle then
-    io.write("[!] No handle ! Reason: ",tostring(reason),"\n")
-    return nil,reason
-  end
-  local data=""; local deadline=computer.uptime()+(timeout or 20)
+local function http_get(url, timeout)
+  if not internet then return nil, "no_internet_card" end
+  local handle, reason = internet.request(url, nil, {["User-Agent"]="telehub-setup"})
+  if not handle then return nil, reason end
+  local data = ""
+  local deadline = computer.uptime() + (timeout or 20)
   for chunk in handle do
-    if chunk then data=data..chunk end
-    if timeout and computer.uptime()>deadline then return nil,"timeout" end
+    if chunk then data = data .. chunk end
+    if timeout and computer.uptime() > deadline then
+      return nil, "timeout"
+    end
   end
   return data
 end
 
-local function writeFile(path,content)
-  ensureDir(path)
-  local f=assert(io.open(path,"w")); f:write(content); f:close()
+local function writeFile(path, content)
+  ensureDirForFile(path)
+  local f = assert(io.open(path, "w"))
+  f:write(content)
+  f:close()
 end
 
+-- ——— manifest ————————————————————————————————————————————————————
 local function fetchManifest()
   local url = REPO .. "/" .. MANIFEST
   io.write("[+] Fetch manifest: ", url, "\n")
@@ -51,80 +62,85 @@ local function fetchManifest()
   local body, err = http_get(url, 20)
   assert(body, "manifest http error: "..tostring(err))
 
-  local tmp = "/home/_telehub_manifest.lua"  -- compatible OpenOS
-  local f = assert(io.open(tmp, "w"))
-  f:write(body)
-  f:close()
+  local tmp = "/home/_telehub_manifest.lua"  -- OpenOS-safe
+  writeFile(tmp, body)
 
   local ok, t = pcall(dofile, tmp)
-  pcall(fs.remove, tmp)
+  fs.remove(tmp)
 
   assert(ok, "manifest syntax error: "..tostring(t))
-  assert(type(t)=="table", "manifest must return a table")
-  assert(type(t.files)=="table", "manifest.files must be a table")
+  assert(type(t) == "table", "manifest must return a table")
+  assert(type(t.files) == "table", "manifest.files must be a table")
   return t
 end
 
+-- ——— téléchargement des fichiers listés ————————————————————————
+local function downloadTo(path, url)
+  io.write("    -> ", path, "\n")
+  local data, err = http_get(url, 30)
+  assert(data, "download failed: "..tostring(err))
+  local tmp = path .. ".new"
+  writeFile(tmp, data)
+  if fs.exists(path) then
+    pcall(fs.remove, path..".bak")
+    pcall(fs.rename, path, path..".bak")
+  end
+  assert(fs.rename(tmp, path), "rename failed")
+end
 
+-- ——— config ——————————————————————————————————————————————————————
+local function loadConfig(path)
+  if fs.exists(path) then
+    local ok, t = pcall(dofile, path)
+    if ok and type(t) == "table" then return t end
+  end
+  return {}
+end
 
-local function downloadTo(path,url)
-  io.write("    -> ",path,"\n")
-  ensureDir(path)
-  local data,err=http_get(url,30); assert(data,"download failed: "..tostring(err))
-  local tmp=path..".new"
-  writeFile(tmp,data)
-  if fs.exists(path) then pcall(fs.remove,path..".bak"); pcall(fs.rename,path,path..".bak") end
-  assert(fs.rename(tmp,path),"rename failed")
+local function saveConfig(path, cfgTable)
+  local ser = require("serialization")
+  writeFile(path, "return "..ser.serialize(cfgTable))
 end
 
 local function ensureConfig()
-  local dir="/etc/telehub"; local cfg=dir.."/config.lua"
-  if not fs.exists(dir) then fs.makeDirectory(dir) end
-  if not fs.exists(cfg) then
-    io.write("[+] Create default config: ",cfg,"\n")
-    local content=table.concat({
-      "return {",
-      "  UPDATE = {",
-      "    AUTO = "..string.format("%q",AUTO)..",",
-      "    REPO = "..string.format("%q",REPO)..",",
-      "    MANIFEST = "..string.format("%q",MANIFEST)..",",
-      "    TIMEOUT = 15,",
-      "  },",
-      "}\n"
-    },"\n")
-    writeFile(cfg,content)
-  else
-    -- Patch REPO/MANIFEST/AUTO si déjà présent (simple remplacement en l'état)
-    local f=io.open(cfg,"r"); local cur=f and f:read("*a") or ""; if f then f:close() end
-    if cur=="" then
-      writeFile(cfg,"return { UPDATE = { AUTO="..string.format("%q",AUTO)..", REPO="..string.format("%q",REPO)..", MANIFEST="..string.format("%q",MANIFEST)..", TIMEOUT=15 }, }\n")
-    elseif (not cur:find(REPO,1,true)) or (not cur:find(MANIFEST,1,true)) then
-      io.write("[i] Updating UPDATE fields in existing config\n")
-      -- très basique: on ajoute/écrase un bloc UPDATE à la fin
-      cur = cur:gsub("%s*$","")
-      if not cur:match("return%s*{") then cur="return {\n"..cur.."\n}" end
-      cur = cur:gsub("}%s*$", "  ,UPDATE = { AUTO="..string.format("%q",AUTO)..", REPO="..string.format("%q",REPO)..", MANIFEST="..string.format("%q",MANIFEST)..", TIMEOUT=15 },\n}\n")
-      writeFile(cfg,cur)
-    end
-  end
+  local cfgDir = "/etc/telehub"
+  local cfgPath = cfgDir.."/config.lua"
+  if not fs.exists(cfgDir) then fs.makeDirectory(cfgDir) end
+
+  local cfg = loadConfig(cfgPath)
+  cfg.UPDATE = cfg.UPDATE or {}
+  cfg.UPDATE.AUTO     = AUTO
+  cfg.UPDATE.REPO     = REPO
+  cfg.UPDATE.MANIFEST = MANIFEST
+  cfg.UPDATE.TIMEOUT  = cfg.UPDATE.TIMEOUT or 15
+
+  saveConfig(cfgPath, cfg)
+  io.write("[+] Config written: ", cfgPath, "\n")
 end
 
 local function writeVersion(v)
-  local vp="/etc/telehub/version"
-  io.write("[+] Set version: ",v or "0.0.0","\n")
-  writeFile(vp,tostring(v or "0.0.0"))
+  local vp = "/etc/telehub/version"
+  writeFile(vp, tostring(v or "0.0.0"))
+  io.write("[+] Version set: ", v or "0.0.0", "\n")
 end
 
--- main
-io.write("[*] telehub-node installer\n")
-assert(REPO and REPO:match("^https?://"),"--repo raw GitHub URL required")
-local man=fetchManifest()
-io.write("[+] Installing files (",tostring(#(function(t)local c=0;for _ in pairs(t) do c=c+1 end; return setmetatable({c}, {__len=function() return c end}) end)(man.files)),")\n") -- affiche le nombre approx
-for src,dst in pairs(man.files) do
-  local url=REPO.."/"..src
-  downloadTo(dst,url)
+-- ——— main ————————————————————————————————————————————————————————
+io.write("[*] telehub-node setup\n")
+assert(REPO and REPO:match("^https?://"), "--repo must be a valid raw GitHub URL")
+local man = fetchManifest()
+
+-- compte simple des fichiers
+local count = 0; for _ in pairs(man.files) do count = count + 1 end
+io.write("[+] Installing files (", tostring(count), ")\n")
+
+for src, dst in pairs(man.files) do
+  local url = REPO .. "/" .. src
+  downloadTo(dst, url)
 end
+
 ensureConfig()
 writeVersion(man.version or "0.0.0")
-io.write("[✓] Done. Entry point: /usr/bin/telehub_node.lua\n")
+
+io.write("[✓] Done.\n")
+io.write("    Entry point: /usr/bin/telehub_node.lua\n")
 io.write("    Run: telehub_node.lua\n")
