@@ -1,20 +1,25 @@
-local gpu = require("component").gpu
-local term = require("term")
-local event = require("event")
+-- /usr/bin/telehub_node.lua
+-- Entry point for Telehub node
 
-local util    = require("telehub.util")
-local cfgmod  = require("telehub.config")
-local detect  = require("telehub.detector")
-local access  = require("telehub.access")
-local redio   = require("telehub.redio")
-local ui      = require("telehub.ui")
-local cfgui   = require("telehub.cfgui")
+local gpu      = require("component").gpu
+local term     = require("term")
+local event    = require("event")
+local computer = require("computer")
+
+local util   = require("telehub.util")
+local cfgmod = require("telehub.config")
+local detect = require("telehub.detector")
+local access = require("telehub.access")
+local redio  = require("telehub.redio")
+local ui     = require("telehub.ui")
+local cfgui  = require("telehub.cfgui")
+local upd    = require("telehub.update")
 
 local cfg = cfgmod.load()
 local origW, origH = gpu.getResolution()
 local rects = {}
 
-local state = {present=false, who=nil, dist=nil, allowed=false}
+local state = { present=false, who=nil, dist=nil, allowed=false }
 
 local function redraw()
   rects = ui.draw(state, cfg)
@@ -36,22 +41,39 @@ local function isPresent(dist)
 end
 
 local function main()
+  if cfg.UPDATE and cfg.UPDATE.AUTO and cfg.UPDATE.AUTO ~= "off" then
+    local applied, err = upd.checkAndMaybeApply(cfg)
+    if applied then
+      computer.shutdown(true)
+      return
+    end
+  end
+
   ui.init(cfg)
   redraw()
+
   while true do
     local ev = { event.pull(cfg.TICK_SEC or 0.08) }
-    if ev[1] == "interrupted" then break end
+
+    if ev[1] == "interrupted" then
+      break
+    end
+
     if ev[1] == "key_down" then
       local _,_,_,code,ch = table.unpack(ev)
-      if code == 0x10 or ch == 81 or ch == 113 then break end -- Q
+      if code == 0x10 or ch == 81 or ch == 113 then -- Q/q
+        break
+      end
     end
 
     if ev[1] == "touch" then
       local _,_,x,y = table.unpack(ev)
+
       if rects.open and x>=rects.open.x1 and x<=rects.open.x2 and y>=rects.open.y1 and y<=rects.open.y2 then
         cfg.ACCESS_POLICY = "open"
         cfgmod.save(cfg)
         redraw()
+
       elseif rects.config and x>=rects.config.x1 and x<=rects.config.x2 and y>=rects.config.y1 and y<=rects.config.y2 then
         local newCfg = cfgui.run(cfg, cfgmod.save)
         if newCfg then
@@ -59,6 +81,7 @@ local function main()
           ui.init(cfg)
         end
         redraw()
+
       elseif rects.tele and x>=rects.tele.x1 and x<=rects.tele.x2 and y>=rects.tele.y1 and y<=rects.tele.y2 then
         local _, d2 = nearest()
         if isPresent(d2) and state.allowed then
@@ -82,5 +105,6 @@ local ok, err = xpcall(main, function(e)
   if debug and debug.traceback then return debug.traceback(e, 2) end
   return tostring(e)
 end)
+
 cleanup()
 if not ok then io.stderr:write(err.."\n") end
