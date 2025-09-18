@@ -1,6 +1,6 @@
 -- install.lua : installe/maj telehub-node depuis un repo GitHub (raw)
 -- Usage:
---   install.lua --repo https://raw.githubusercontent.com/<owner>/<repo>/main [--manifest telehub_manifest.lua] [--auto off|check|apply]
+--   install.lua --repo https://raw.githubusercontent.com/<owner>/<repo>/main [--manifest manifest.lua] [--auto off|check|apply]
 local component=require("component")
 local fs=require("filesystem")
 local computer=require("computer")
@@ -16,7 +16,7 @@ local function getArg(flag,def)
 end
 
 local REPO=getArg("--repo","https://https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main")
-local MANIFEST=getArg("--manifest","telehub_manifest.lua")
+local MANIFEST=getArg("--manifest","manifest.lua")
 local AUTO=getArg("--auto","apply") -- off|check|apply
 
 local function ensureDir(path)
@@ -45,7 +45,7 @@ local function fetchManifest()
   local url = REPO.."/"..MANIFEST
   io.write("[+] Fetch manifest: ", url, "\n")
   local body, err = http_get(url, 20); assert(body, "manifest http error: "..tostring(err))
-  local tmp = "/tmp/_telehub_manifest.lua"
+  local tmp = "/tmp/_manifest.lua"
   writeFile(tmp, body)
   local ok, t = pcall(dofile, tmp)
   fs.remove(tmp)
