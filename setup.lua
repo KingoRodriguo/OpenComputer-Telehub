@@ -15,7 +15,7 @@ local function getArg(flag,def)
   return def
 end
 
-local REPO=getArg("--repo","https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main")
+local REPO=getArg("--repo","https://https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main")
 local MANIFEST=getArg("--manifest","telehub_manifest.lua")
 local AUTO=getArg("--auto","apply") -- off|check|apply
 
@@ -42,14 +42,18 @@ local function writeFile(path,content)
 end
 
 local function fetchManifest()
-  local url=REPO.."/"..MANIFEST
-  io.write("[+] Fetch manifest: ",url,"\n")
-  local body,err=http_get(url,20); assert(body,"manifest error: "..tostring(err))
-  local tmp="/tmp/_telehub_manifest.lua"
-  writeFile(tmp,body)
-  local ok,t=pcall(dofile,tmp); fs.remove(tmp)
-  assert(ok and type(t)=="table","bad manifest format")
-  assert(type(t.files)=="table","manifest missing 'files'")
+  local url = REPO.."/"..MANIFEST
+  io.write("[+] Fetch manifest: ", url, "\n")
+  local body, err = http_get(url, 20); assert(body, "manifest http error: "..tostring(err))
+  local tmp = "/tmp/_telehub_manifest.lua"
+  writeFile(tmp, body)
+  local ok, t = pcall(dofile, tmp)
+  fs.remove(tmp)
+  if not ok then
+    error("manifest syntax error: "..tostring(t))
+  end
+  assert(type(t)=="table", "manifest must return a table")
+  assert(type(t.files)=="table", "manifest.files must be a table")
   return t
 end
 
