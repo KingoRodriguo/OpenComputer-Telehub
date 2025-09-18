@@ -42,7 +42,7 @@ local function writeFile(path,content)
 end
 
 local function fetchManifest()
-  local url = REPO .. "/" .. MANIFEST
+  local url = '"' .. REPO .. "/" .. MANIFEST .. '"'
   io.write("[+] Fetch manifest: ", url, "\n")
 
   local body, err = http_get(url, 20)
