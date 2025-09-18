@@ -26,6 +26,12 @@ M.DEFAULT = {
   OWNER = nil,
   ALLOW = {},
   DENY  = {},
+  UPDATE = {
+    AUTO = "apply", -- "off"|"check"|"apply"
+    REPO = "https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main",
+    MANIFEST = "telehub_manifest.lua",
+    TIMEOUT = 15,
+  },
 }
 
 local function merge(dst, src)

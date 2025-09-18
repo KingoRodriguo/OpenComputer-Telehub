@@ -1,0 +1,3 @@
+To install
+
+wget https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main/setup.lua && setup
