@@ -12,4 +12,3 @@ return {
     ["usr/lib/telehub/update.lua"]    = "/usr/lib/telehub/update.lua",
   }
 }
-
