@@ -106,7 +106,10 @@ local function fetchManifest()
   local url = REPO .. "/" .. MANIFEST
   log("Fetching manifest: " .. url)
 
+  log("HTTP GET "..url)
   local body, err = http_get(url, 20)
+  if not body then log("HTTP error: "..tostring(err)) end
+  if body then log("Downloaded "..tostring(#body).." bytes") end
   assert(body, "manifest http error: " .. tostring(err))
 
   -- Debug: tête du contenu (utile pour voir si c’est du HTML/404)
@@ -160,7 +163,10 @@ end
 -- ——— téléchargement des fichiers listés ————————————————————————
 local function downloadTo(path, url)
   log("Downloading "..url.." -> "..path)
+  log("HTTP GET "..url)
   local data, err = http_get(url, 30)
+  if not data then log("HTTP error: "..tostring(err)) end
+  if data then log("Downloaded "..tostring(#data).." bytes") end
   assert(data, "download failed: "..tostring(err))
   local tmp = path .. ".new"
   writeFile(tmp, data)
