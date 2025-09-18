@@ -31,6 +31,7 @@ M.DEFAULT = {
     REPO = "https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main",
     MANIFEST = "manifest.lua",
     TIMEOUT = 15,
+    KEEP_MANIFEST = false,  -- <-- nouvelle option
   },
 }
 

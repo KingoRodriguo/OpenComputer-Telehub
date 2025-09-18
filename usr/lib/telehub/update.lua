@@ -122,7 +122,12 @@ function M.fetchManifest(cfg)
   ensureDirForFile(tmp)
   local f = assert(io.open(tmp, "w")); f:write(body); f:close()
   local ok, t = pcall(dofile, tmp)
-  pcall(fs.remove, tmp)
+
+  -- Supprimer ou garder selon config
+  if not (cfg.UPDATE and cfg.UPDATE.KEEP_MANIFEST) then
+    pcall(fs.remove, tmp)
+  end
+
   if not ok then return nil, "manifest_syntax: " .. tostring(t) end
   if type(t) ~= "table" then return nil, "manifest_not_table" end
   if type(t.files) ~= "table" then return nil, "manifest_missing_files" end

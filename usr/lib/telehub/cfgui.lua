@@ -5,6 +5,9 @@ local unicode= require("unicode")
 local util  = require("telehub.util")
 local sides = require("sides")
 
+local updater = require("telehub.update")
+local computer = require("computer")
+
 local gpu = comp.gpu
 
 local M = {}
@@ -70,6 +73,19 @@ function M.run(cfg, saveFn)
     local rSave=drawBtn(w-10,h-1,"[ Save ]",0x55AA55,0x000000)
     local rBack=drawBtn(2,    h-1,"[ Back ]",0xAA5555,0x000000)
 
+    local localVer = updater.getLocalVersion() or "0.0.0"
+    local auto = (tmp.UPDATE and tmp.UPDATE.AUTO) or "off"
+    gpu.set(2,y, "Update: version "..localVer.."  Auto="..auto)
+    local rToggle = drawBtn(w-24,y,"[ Auto Toggle ]",0x333333,0xFFFFFF)
+    local rCheck  = drawBtn(w-12,y,"[ Check ]",0x666666,0xFFFFFF); y=y+2
+
+    -- ces deux lignes existent peut-être déjà, garde-les :
+    local rNow    = drawBtn(2,   y,"[ Update Now ]",0x55AA55,0x000000)
+
+    -- AJOUT : bouton qui force vérification + application si newer
+    local rForce  = drawBtn(20,  y,"[ Check & Update ]",0x55AAFF,0x000000); y=y+2
+
+
     local ev = { event.pull() }
     if ev[1] == "interrupted" then running=false
     elseif ev[1] == "key_down" then local _,_,_,code,ch = table.unpack(ev); if code==0x10 or ch==81 or ch==113 then running=false end
@@ -85,6 +101,43 @@ function M.run(cfg, saveFn)
       elseif pointIn(rS,x,y)   then local order={"bottom","top","north","south","west","east"}; local cur=util.sideName(util.sideId(tmp.OUT_SIDE)); local idx=1 for i,n in ipairs(order) do if n==cur then idx=i end end idx=idx%#order+1; tmp.OUT_SIDE=order[idx]
       elseif pointIn(rSave,x,y) then saveFn(tmp); return util.deepcopy(tmp)
       elseif pointIn(rBack,x,y) then return
+      elseif pointIn(rCheck,x,y) then
+        local man, err = updater.fetchManifest(tmp)
+        local msg = man and ("Latest="..(man.version or "?")) or ("Check failed: "..tostring(err))
+        gpu.set(2,h-2,msg)
+
+      elseif pointIn(rNow,x,y) then
+        local man = updater.fetchManifest(tmp)
+        if man then
+          updater.apply(tmp, man)
+          localVer = updater.getLocalVersion() or man.version or localVer
+          gpu.set(2,h-2,"Applied "..tostring(localVer)..". Reopen to take effect.")
+        else
+          gpu.set(2,h-2,"Update failed")
+        end
+
+      elseif pointIn(rForce,x,y) then
+        local man, err = updater.fetchManifest(tmp)
+        if not man then
+          gpu.set(2,h-2,"Check failed: "..tostring(err))
+        else
+          local cur = localVer or "0.0.0"
+          local newer = (updater.cmpVersion(cur, man.version or "0.0.0") < 0)
+          if newer then
+            gpu.set(2,h-2,"Updating to "..tostring(man.version).."...")
+            local ok, aerr = updater.apply(tmp, man)
+            if ok then
+              gpu.set(2,h-2,"Update applied. Rebooting...")
+              os.sleep(0.6)
+              computer.shutdown(true) -- redémarre pour charger le nouveau code
+            else
+              gpu.set(2,h-2,"Update failed: "..tostring(aerr))
+            end
+          else
+            gpu.set(2,h-2,"Already up to date ("..tostring(cur)..")")
+          end
+        end
+
       end
     end
   end
