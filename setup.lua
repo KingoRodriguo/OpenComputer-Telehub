@@ -15,7 +15,7 @@ local function getArg(flag,def)
   return def
 end
 
-local REPO=getArg("--repo","https://https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main")
+local REPO=getArg("--repo","https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main")
 local MANIFEST=getArg("--manifest","manifest.lua")
 local AUTO=getArg("--auto","apply") -- off|check|apply
 
