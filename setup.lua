@@ -65,24 +65,58 @@ end
 -- ——— manifest ————————————————————————————————————————————————————
 local function fetchManifest()
   local url = REPO .. "/" .. MANIFEST
-  log("Fetching manifest: "..url)
+  log("Fetching manifest: " .. url)
 
   local body, err = http_get(url, 20)
-  assert(body, "manifest http error: "..tostring(err))
+  assert(body, "manifest http error: " .. tostring(err))
 
-  local tmp = "/home/_telehub_manifest.lua"  -- OpenOS-safe
+  -- Debug: tête du contenu (utile pour voir si c’est du HTML/404)
+  local head = (body:sub(1,120):gsub("%s"," "))
+  log("Manifest head: " .. head)
+  log("Manifest bytes: " .. tostring(#body))
+
+  -- Sanitize: retire BOM UTF-8 + normalise CRLF
+  if body:sub(1,3) == string.char(0xEF,0xBB,0xBF) then
+    log("Stripping UTF-8 BOM")
+    body = body:sub(4)
+  end
+  body = body:gsub("\r\n", "\n")
+
+  -- Petit check heuristique
+  if not body:match("^%s*return%s*%{") then
+    log("Warning: manifest does not start with 'return {' (may still be valid)")
+  end
+
+  local tmp = "/home/_telehub_manifest.lua" -- OpenOS-safe
   writeFile(tmp, body)
 
-  log("Executing manifest file")
-  local ok, t = pcall(dofile, tmp)
+  -- Utilise loadfile pour récupérer l’erreur exacte (au lieu de dofile direct)
+  local lf, lerr = loadfile(tmp)
+  if not lf then
+    -- Sauvegarde une copie debug
+    local dbg = "/home/_telehub_manifest.debug.lua"
+    writeFile(dbg, body)
+    error("manifest loadfile error: " .. tostring(lerr) .. " (debug copy: " .. dbg .. ")")
+  end
+
+  log("Executing manifest chunk")
+  local ok, t = pcall(lf)
   fs.remove(tmp)
 
-  assert(ok, "manifest syntax error: "..tostring(t))
+  if not ok then
+    local dbg = "/home/_telehub_manifest.debug.lua"
+    writeFile(dbg, body)
+    error("manifest runtime error: " .. tostring(t) .. " (debug copy: " .. dbg .. ")")
+  end
+
   assert(type(t) == "table", "manifest must return a table")
   assert(type(t.files) == "table", "manifest.files must be a table")
-  log("Manifest loaded, version="..tostring(t.version).." files="..tostring(#(function(x)local c=0 for _ in pairs(x) do c=c+1 end return {c} end)(t.files)))
+
+  local count = 0; for _ in pairs(t.files) do count = count + 1 end
+  log("Manifest loaded: version=" .. tostring(t.version) .. " files=" .. count)
   return t
 end
+
 
 -- ——— téléchargement des fichiers listés ————————————————————————
 local function downloadTo(path, url)
