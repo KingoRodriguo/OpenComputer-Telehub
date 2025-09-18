@@ -27,7 +27,10 @@ end
 local function http_get(url,timeout)
   if not internet then return nil,"no_internet_card" end
   local handle,reason=internet.request(url)
-  if not handle then return nil,reason end
+  if not handle then
+    io.write("[!] No handle ! Reason: ",tostring(reason),"\n")
+    return nil,reason
+  end
   local data=""; local deadline=computer.uptime()+(timeout or 20)
   for chunk in handle do
     if chunk then data=data..chunk end
@@ -42,7 +45,7 @@ local function writeFile(path,content)
 end
 
 local function fetchManifest()
-  local url = '"' .. REPO .. "/" .. MANIFEST .. '"'
+  local url = REPO .. "/" .. MANIFEST
   io.write("[+] Fetch manifest: ", url, "\n")
 
   local body, err = http_get(url, 20)
