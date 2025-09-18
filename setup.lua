@@ -47,6 +47,10 @@ local function fetchManifest()
   local body, err = http_get(url, 20); assert(body, "manifest http error: "..tostring(err))
   local tmp = "/tmp/_manifest.lua"
   writeFile(tmp, body)
+  -- juste après body=...
+  if not body then error("manifest http error: "..tostring(err)) end
+  print("[debug] first bytes:", (body:sub(1,80):gsub("%s"," ")))
+
   local ok, t = pcall(dofile, tmp)
   fs.remove(tmp)
   if not ok then
