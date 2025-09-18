@@ -1,5 +1,5 @@
 return {
-  version = "0.1.4",
+  version = "0.1.5",
   files = {
     ["usr/bin/telehub_node.lua"]      = "/usr/bin/telehub_node.lua",
     ["usr/lib/telehub/util.lua"]      = "/usr/lib/telehub/util.lua",
