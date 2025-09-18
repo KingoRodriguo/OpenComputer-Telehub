@@ -3,6 +3,8 @@ local term  = require("term")
 local unicode= require("unicode")
 local util  = require("telehub.util")
 
+local version = require("telehub.update").getLocalVersion() or "0.0.0"
+
 local gpu = comp.gpu
 
 local M = {}
@@ -14,6 +16,8 @@ function M.init(cfg)
   gpu.setResolution(math.min(w, maxW), math.min(h, maxH))
   term.clear()
 end
+
+
 
 function M.draw(state, cfg)
   local w,h = gpu.getResolution()
@@ -74,6 +78,7 @@ function M.draw(state, cfg)
   gpu.set(util.centerX(gpu, "Tap the button to teleport"), h-3, "Tap the button to teleport")
   gpu.set(util.centerX(gpu, "Quit: Ctrl+C or Q"),           h-2, "Quit: Ctrl+C or Q")
 
+  gpu.set(util.centerX(gpu, "v"..version), h, "v"..version)
   return rects
 end
 
