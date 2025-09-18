@@ -16,7 +16,7 @@ end
 
 local function http_get(url, timeout)
   if not internet then return nil, "no_internet_card" end
-  local handle, reason = internet.request(url, nil, { ["User-Agent"] = "telehub" })
+  local handle, reason = internet.request(url)
   if not handle then return nil, reason end
   local data = ""
   local deadline = computer.uptime() + (timeout or 15)
