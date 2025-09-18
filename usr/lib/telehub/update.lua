@@ -58,12 +58,12 @@ end
 
 function M.fetchManifest(cfg)
   local repo = cfg.UPDATE and cfg.UPDATE.REPO
-  local manifest = (cfg.UPDATE and cfg.UPDATE.MANIFEST) or "telehub_manifest.lua"
+  local manifest = (cfg.UPDATE and cfg.UPDATE.MANIFEST) or "manifest.lua"
   if not repo then return nil, "no_repo" end
   local url = repo .. "/" .. manifest
   local body, err = http_get(url, cfg.UPDATE.TIMEOUT or 15)
   if not body then return nil, err end
-  local tmp = "/tmp/_telehub_manifest.lua"
+  local tmp = "/tmp/_manifest.lua"
   local f = assert(io.open(tmp, "w")); f:write(body); f:close()
   local ok, t = pcall(dofile, tmp)
   pcall(fs.remove, tmp)
