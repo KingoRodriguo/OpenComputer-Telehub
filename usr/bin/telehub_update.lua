@@ -10,32 +10,46 @@ local computer  = require("computer")
 
 -- ---------- args ----------
 local args = {...}
-local function getArg(flag, def)
+
+-- option avec valeur (ex: --repo URL ou --repo=URL)
+local function getOpt(flag, def)
   for i=1,#args do
-    if args[i] == flag and args[i+1] then return args[i+1] end
-    local v = args[i]:match("^"..flag.."=(.+)$"); if v then return v end
+    local a = args[i]
+    if a == flag and args[i+1] and not tostring(args[i+1]):match("^%-%-") then
+      return args[i+1]
+    end
+    local v = a:match("^"..flag.."=(.+)$")
+    if v then return v end
   end
   return def
 end
 
-local REPO     = getArg("--repo",     "https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main")
-local MANIFEST = getArg("--manifest", "manifest.lua")
-local FORCE    = (getArg("--force",   nil) ~= nil)
-local DEV      = (getArg("--dev",     nil) ~= nil)  -- pour tests locaux
+-- flag booléen sans valeur (ex: --dev, --force)
+local function hasFlag(flag)
+  for i=1,#args do
+    if args[i] == flag then return true end
+  end
+  return false
+end
+
+local REPO     = getOpt("--repo",     "https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main")
+local MANIFEST = getOpt("--manifest", "manifest.lua")
+local FORCE    = hasFlag("--force")
+local DEV      = hasFlag("--dev")
 
 -- ---------- logs ----------
 local function ts() return string.format("[%06.2f]", computer.uptime()) end
 local function log(msg) io.write(ts()," ",msg,"\n"); io.flush() end
 
-if REPO then
-  REPO = REPO:gsub("/main$", "")  -- retire /main si présent
-  if DEV then
-    REPO = REPO .. "/dev"
-  else
-    REPO = REPO .. "/main"
-  end
-  log("Using repo: "..REPO)
-end
+-- ---------- normalisation REPO ----------
+local function trim(s) return (s:gsub("^%s+",""):gsub("%s+$","")) end
+REPO = trim(REPO or "")
+REPO = REPO:gsub("/+$","")           -- retire slash final
+REPO = REPO:gsub("/main$",""):gsub("/dev$","")  -- retire branche si déjà présente
+REPO = REPO .. (DEV and "/dev" or "/main")      -- ajoute la branche voulue
+
+log("Using repo: "..REPO)
+log("Using manifest: "..MANIFEST.."  (force="..tostring(FORCE)..", dev="..tostring(DEV)..")")
 
 -- ---------- utils ----------
 local function ensureDirForFile(path)
