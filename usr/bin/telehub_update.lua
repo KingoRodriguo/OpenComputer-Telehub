@@ -3,6 +3,7 @@
 -- Usage:
 --   telehub_update --repo https://raw.githubusercontent.com/<owner>/<repo>/main --manifest manifest.lua
 --   telehub_update --repo ... --manifest ... --force   (installe même si version identique)
+--   telehub_update --repo ... --manifest ... --dev     (pour utiliser la branche/dev)
 
 local fs        = require("filesystem")
 local computer  = require("computer")
@@ -20,10 +21,21 @@ end
 local REPO     = getArg("--repo",     "https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main")
 local MANIFEST = getArg("--manifest", "manifest.lua")
 local FORCE    = (getArg("--force",   nil) ~= nil)
+local DEV      = (getArg("--dev",     nil) ~= nil)  -- pour tests locaux
 
 -- ---------- logs ----------
 local function ts() return string.format("[%06.2f]", computer.uptime()) end
 local function log(msg) io.write(ts()," ",msg,"\n"); io.flush() end
+
+if REPO then
+  REPO = REPO:gsub("/main$", "")  -- retire /main si présent
+  if DEV then
+    REPO = REPO .. "/dev"
+  else
+    REPO = REPO .. "/main"
+  end
+  log("Using repo: "..REPO)
+end
 
 -- ---------- utils ----------
 local function ensureDirForFile(path)
