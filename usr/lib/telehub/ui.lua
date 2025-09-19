@@ -1,84 +1,86 @@
-local comp  = require("component")
-local term  = require("term")
+local comp   = require("component")
+local term   = require("term")
 local unicode= require("unicode")
-local util  = require("telehub.util")
-
-local version = require("telehub.update").getLocalVersion() or "0.0.0"
+local util   = require("telehub.util")
+local upd    = require("telehub.update")
 
 local gpu = comp.gpu
-
 local M = {}
+
+local function textW(s) return unicode.len(s or "") end
 
 function M.init(cfg)
   local maxW, maxH = gpu.maxResolution()
-  local w = cfg.RES_W or math.max(20, math.floor(maxW * (cfg.RES_SCALE or 0.5)))
-  local h = cfg.RES_H or math.max(10, math.floor(maxH * (cfg.RES_SCALE or 0.5)))
+  local w = cfg.RES_W or math.max(28, math.floor(maxW * (cfg.RES_SCALE or 0.6)))
+  local h = cfg.RES_H or math.max(16, math.floor(maxH * (cfg.RES_SCALE or 0.6)))
   gpu.setResolution(math.min(w, maxW), math.min(h, maxH))
   term.clear()
 end
 
-
+-- Dessine un bouton plein (1 ligne) ou bloc (3 lignes) centré/placé
+local function drawBtn(x, y, w, h, bg, fg, label)
+  local fg0, bg0 = gpu.getForeground(), gpu.getBackground()
+  local hasColor = (gpu.getDepth and gpu.getDepth() or 1) >= 4
+  if hasColor then gpu.setBackground(bg or 0x333333); gpu.setForeground(fg or 0xFFFFFF) end
+  gpu.fill(x, y, w, h, " ")
+  if label then
+    local lx = x + math.floor((w - textW(label))/2)
+    local ly = y + math.floor(h/2)
+    gpu.set(lx, ly, label)
+  end
+  if hasColor then gpu.setBackground(bg0); gpu.setForeground(fg0) end
+  return {x1=x, y1=y, x2=x+w-1, y2=y+h-1}
+end
 
 function M.draw(state, cfg)
-  local w,h = gpu.getResolution()
+  local w, h = gpu.getResolution()
   term.clear()
 
-  local y = math.floor(h/2) - 6
-  local title = cfg.DEST_NAME or "Destination"
-  gpu.set(util.centerX(gpu, title), y, title)
+  -- Header
+  local dest = "["..(cfg.DEST_NAME or "Destination").."]"
+  local headerY = 2
+  gpu.set(util.centerX(gpu, dest), headerY, dest)
+  gpu.fill(3, headerY+1, w-4, 1, "─")
 
-  local who  = "Player: "..(state.who or "-")
-  local dist = "Distance: "..(state.dist and string.format("%.2f", state.dist) or "-")
-  local acc  = "Access: "..(state.present and (state.allowed and "ALLOWED" or "DENIED") or "-")
-  gpu.set(util.centerX(gpu, who),  y+2, who)
-  gpu.set(util.centerX(gpu, dist), y+3, dist)
-  gpu.set(util.centerX(gpu, acc),  y+4, acc)
+  -- Owner line
+  local owner = "Owner : "..(cfg.OWNER or "-")
+  gpu.set(util.centerX(gpu, owner), headerY+3, owner)
 
-  local rects = {}
-  if state.present and state.allowed then
-    local label = cfg.BTN_LABEL or "Teleport"
-    local pad = 4
-    local btnW = unicode.len(label) + pad
-    local bx = util.centerX(gpu, string.rep(" ", btnW))
-    local by = y + 7
+  -- TELEPORT button (vert = allowed/owner; rouge = denied)
+  local label = (cfg.BTN_LABEL or "TELEPORT"):upper()
+  local btnW  = math.max(18, textW(label) + 6)
+  local btnH  = 3
+  local bx    = math.floor((w - btnW)/2) + 1
+  local by    = math.floor(h/2)
 
-    local fg0,bg0 = gpu.getForeground(), gpu.getBackground()
-    local hasColor = (gpu.getDepth and gpu.getDepth() or 1) >= 4
-    if hasColor then gpu.setBackground(cfg.BTN_COLOR_BG or 0xFFFF00); gpu.setForeground(cfg.BTN_COLOR_FG or 0x000000) end
-    gpu.fill(bx, by, btnW, 3, " ")
-    gpu.set(bx + math.floor((btnW - unicode.len(label))/2), by+1, label)
-    if hasColor then gpu.setBackground(bg0); gpu.setForeground(fg0) end
+  local allowed = state.allowed and state.present
+  local bg = allowed and 0x88FF88 or 0xCC4444
+  local fg = 0x000000
+  local teleRect = drawBtn(bx, by, btnW, btnH, bg, fg, label)
 
-    rects.tele = {x1=bx, y1=by, x2=bx+btnW-1, y2=by+2}
-  end
+  -- Bottom bar: Configuration centered
+  local cfgLabel = "Configuration"
+  local cfgW  = textW(cfgLabel) + 4
+  local cfgH  = 1
+  local cfgX  = math.floor((w - cfgW)/2) + 1
+  local cfgY  = h - 1
+  local cfgRect = drawBtn(cfgX, cfgY, cfgW, cfgH, 0x55AA55, 0x000000, cfgLabel)
 
-  local leftLabel  = "[ OPEN ]"
-  local rightLabel = "[ CONFIG ]"
-  local leftW  = unicode.len(leftLabel)
-  local rightW = unicode.len(rightLabel)
-  local lx = 2
-  local rx = w - rightW - 1
+  -- Version en bas-droite
+  local v = upd.getLocalVersion() or "0.0.0"
+  local vstr = "v"..v
+  gpu.set(w - textW(vstr), h, vstr)
 
-  local fg0,bg0 = gpu.getForeground(), gpu.getBackground()
-  local hasColor = (gpu.getDepth and gpu.getDepth() or 1) >= 4
+  -- Aide en bas-gauche
+  gpu.set(2, h, "Q to quit")
 
-  if hasColor then
-    if cfg.ACCESS_POLICY == "open" then gpu.setBackground(0x44CC44); gpu.setForeground(0x000000) else gpu.setBackground(0x333333); gpu.setForeground(0xFFFFFF) end
-  end
-  gpu.fill(lx, h-1, leftW, 1, " "); gpu.set(lx, h-1, leftLabel)
-  if hasColor then gpu.setBackground(bg0); gpu.setForeground(fg0) end
-
-  if hasColor then gpu.setBackground(0x333333); gpu.setForeground(0xFFFFFF) end
-  gpu.fill(rx, h-1, rightW, 1, " "); gpu.set(rx, h-1, rightLabel)
-  if hasColor then gpu.setBackground(bg0); gpu.setForeground(fg0) end
-
-  rects.open   = {x1=lx, y1=h-1, x2=lx+leftW-1,  y2=h-1}
-  rects.config = {x1=rx, y1=h-1, x2=rx+rightW-1, y2=h-1}
-
-  gpu.set(util.centerX(gpu, "Tap the button to teleport"), h-3, "Tap the button to teleport")
-  gpu.set(util.centerX(gpu, "Quit: Ctrl+C or Q"),           h-2, "Quit: Ctrl+C or Q")
-
-  gpu.set(util.centerX(gpu, "v"..version), h, "v"..version)
+  -- Retourne les zones cliquables
+  local rects = {
+    tele   = teleRect,
+    config = cfgRect,
+    -- (optionnel) on peut garder un champ 'allowed' pour la logique de clic
+    _allowed = allowed
+  }
   return rects
 end
 
