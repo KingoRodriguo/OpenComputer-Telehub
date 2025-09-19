@@ -13,7 +13,6 @@ local access = require("telehub.access")
 local redio  = require("telehub.redio")
 local ui     = require("telehub.ui")
 local cfgui  = require("telehub.cfgui")
-local upd    = require("telehub.update")
 
 local cfg = cfgmod.load()
 local origW, origH = gpu.getResolution()
@@ -41,14 +40,6 @@ local function isPresent(dist)
 end
 
 local function main()
-  if cfg.UPDATE and cfg.UPDATE.AUTO and cfg.UPDATE.AUTO ~= "off" then
-    local applied, err = upd.checkAndMaybeApply(cfg)
-    if applied then
-      computer.shutdown(true)
-      return
-    end
-  end
-
   ui.init(cfg)
   redraw()
 
