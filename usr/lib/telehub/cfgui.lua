@@ -76,6 +76,8 @@ function M.run(cfg, saveFn)
         {label="allow_list", type="btn", text="Add", bg=0x555555, fg=0xFFFFFF},
         {label="deny_list", type="btn", text="Add", bg=0x555555, fg=0xFFFFFF},
         {label="Redstone side :", type="pill", text="cycle", bg=0x555555, fg=0xFFFFFF, value=t.REDSTONE_SIDE},
+        {label="Transposer Teleposer side :", type="pill", text="cycle", bg=0x555555, fg=0xFFFFFF, value=t.TRANSPOSER_TELEPOSER_SIDE},
+        {label="Transposer Storage side :", type="pill", text="cycle", bg=0x555555, fg=0xFFFFFF, value=t.TRANSPOSER_STORAGE_SIDE},
     }
 
     while running do
