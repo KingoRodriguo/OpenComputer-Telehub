@@ -257,23 +257,15 @@ end
 
 -- ---------- remplacement des fichiers ----------
 local function replaceFile(dstPath, data)
-  ensureDirForFile(dstPath)
-
-  -- supprime l'ancien (dur, comme demandé)
-  if fs.exists(dstPath) then
-    log("Removing old: "..dstPath)
-    assert(fs.remove(dstPath), "remove_failed: "..dstPath)
-  end
-
-  -- écrit le nouveau via .new puis rename
-  local tmp = dstPath..".new"
-  writeFile(tmp, data)
-  assert(fs.rename(tmp, dstPath), "rename_failed: "..dstPath)
-
-  -- vérif basique
-  local got = readFile(dstPath) or ""
-  assert(#got == #data, "verify_size_mismatch: "..dstPath)
+    ensureDirForFile(dstPath)
+    local tmp = dstPath..".new"
+    writeFile(tmp, data) -- écrit le nouveau fichier
+    if fs.exists(dstPath) then fs.remove(dstPath) end -- supprime l’ancien si nécessaire
+    assert(fs.rename(tmp, dstPath), "rename_failed: "..dstPath)
+    local got = readFile(dstPath) or ""
+    assert(#got == #data, "verify_size_mismatch: "..dstPath)
 end
+
 
 local function downloadAndReplaceAll(repo, files)
   for src, dst in pairs(files) do
