@@ -124,6 +124,10 @@ function M.run(cfg, saveFn)
             {type="text", value=t.TRANSPOSER_STORAGE_SIDE},
             {type="pill", text="cycle", value=t.REDSTONE_SIDE, bg=0x555555, fg=0xFFFFFF},
         },
+
+        -- Ligne 9 : test
+        {type="text", value="Test line"},
+        {type="pill", text="cycle", value=t.REDSTONE_SIDE, bg=0x555555, fg=0xFFFFFF},
     }
 
     while true do
