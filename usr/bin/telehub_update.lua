@@ -275,3 +275,4 @@ downloadAndReplaceAll(REPO,man.files)
 if man.version then setLocalVersion(man.version) end
 log("Update complete.")
 io.write("[✓] Done. You can now run: telehub_node.lua\n")
+computer.shutdown(true)
