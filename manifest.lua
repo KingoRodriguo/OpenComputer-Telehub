@@ -13,3 +13,4 @@ return {
     ["usr/lib/telehub/cfgui.lua"]        = "/usr/lib/telehub/cfgui.lua",
     ["usr/lib/telehub/update.lua"]       = "/usr/lib/telehub/update.lua",
   }
+}
