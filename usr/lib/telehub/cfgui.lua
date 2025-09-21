@@ -109,17 +109,20 @@ function M.run(cfg, saveFn)
         -- Ligne 6 : Redstone side
         {
             {type="text", value="Redstone side :"},
+            {type="text", value=t.REDSTONE_SIDE},
             {type="pill", text="cycle", value=t.REDSTONE_SIDE, bg=0x555555, fg=0xFFFFFF},
         },
         -- Ligne 7 : Teleposer side
         {
             {type="text", value="Teleposer side :"},
             {type="text", value=t.TRANSPOSER_TELEPOSER_SIDE},
+            {type="pill", text="cycle", value=t.REDSTONE_SIDE, bg=0x555555, fg=0xFFFFFF},
         },
         -- Ligne 8 : Storage side
         {
             {type="text", value="Storage side :"},
             {type="text", value=t.TRANSPOSER_STORAGE_SIDE},
+            {type="pill", text="cycle", value=t.REDSTONE_SIDE, bg=0x555555, fg=0xFFFFFF},
         },
     }
 
