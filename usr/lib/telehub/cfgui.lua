@@ -77,7 +77,7 @@ function M.run(cfg, saveFn)
     local lines = {
         -- Ligne 1 : Owner
         {
-            {type="text", value="[owner_name test]"},
+            {type="text", value="[owner_name test2]"},
             {type="pill", text="Edit", value=t.OWNER, bg=0x88FF88, fg=0x000000},
         },
         -- Ligne 2 : Destination
