@@ -7,7 +7,9 @@ M.DIR  = "/etc/telehub"
 M.PATH = M.DIR.."/config.lua"
 
 M.DEFAULT = {
-  OUT_SIDE = "back",
+  REDSTONE_SIDE = "back",
+  TRANSPOSER_TELEPOSER_SIDE = "north",
+  TRANSPOSER_STORAGE_SIDE = "east",
   LEVEL_ON = 15,
   PULSE_SEC = 0.35,
   MIN_RANGE = 0.40,
@@ -57,8 +59,8 @@ end
 function M.save(cfg)
   local tosave = util.deepcopy(cfg)
   local sides = require("sides")
-  if type(tosave.OUT_SIDE)=="number" then
-    for k,v in pairs(sides) do if type(v)=="number" and v==tosave.OUT_SIDE then tosave.OUT_SIDE=k; break end end
+  if type(tosave.REDSTONE_SIDE)=="number" then
+    for k,v in pairs(sides) do if type(v)=="number" and v==tosave.REDSTONE_SIDE then tosave.REDSTONE_SIDE=k; break end end
   end
   local f = assert(io.open(M.PATH, "w"))
   f:write("return "..ser.serialize(tosave))

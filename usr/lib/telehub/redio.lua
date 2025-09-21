@@ -15,18 +15,18 @@ end
 function M.pulse(cfg)
   local now = util.nowMs()
   if now - M.lastPulse < (cfg.COOLDOWN_MS or 800) then return end
-  rs.setOutput(sideId(cfg.OUT_SIDE), cfg.LEVEL_ON or 15)
+  rs.setOutput(sideId(cfg.REDSTONE_SIDE), cfg.LEVEL_ON or 15)
   os.sleep(cfg.PULSE_SEC or 0.3)
-  rs.setOutput(sideId(cfg.OUT_SIDE), 0)
+  rs.setOutput(sideId(cfg.REDSTONE_SIDE), 0)
   M.lastPulse = util.nowMs()
 end
 
 function M.level(cfg, on)
-  rs.setOutput(sideId(cfg.OUT_SIDE), on and (cfg.LEVEL_ON or 15) or 0)
+  rs.setOutput(sideId(cfg.REDSTONE_SIDE), on and (cfg.LEVEL_ON or 15) or 0)
 end
 
 function M.off(cfg)
-  rs.setOutput(sideId(cfg.OUT_SIDE), 0)
+  rs.setOutput(sideId(cfg.REDSTONE_SIDE), 0)
 end
 
 return M

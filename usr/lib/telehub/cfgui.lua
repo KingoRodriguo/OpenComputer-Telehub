@@ -84,10 +84,18 @@ function M.run(cfg, saveFn)
     local rDAdd = drawPill(w-16,y,"Add",0x555555,0xFFFFFF)
     local rDDel = drawPill(w-8, y,"Del",0x555555,0xFFFFFF); y=y+2
 
-    -- Teleposer side
-    gpu.set(3,y, "Teleposer side :")
+    -- Redstone output side
+    gpu.set(3,y, "Redstone side :")
     local rSide = drawPill(w-10,y,"cycle",0x555555,0xFFFFFF)
-    gpu.set(22,y, tostring(t.OUT_SIDE)); y=y+3
+    gpu.set(22,y, tostring(t.REDSTONE_SIDE)); y=y+3
+
+    -- Transposer Teleposer side
+    gpu.set(3,y, "Teleposer side :")
+    gpu.set(22,y, tostring(t.TRANSPOSER_TELEPOSER_SIDE)); y=y+2
+
+    -- Transposer Storage side
+    gpu.set(3,y, "Storage side :")
+    gpu.set(22,y, tostring(t.TRANSPOSER_STORAGE_SIDE)); y=y+2
 
     -- Bas : Cancel / Save
     local rCancel = drawBtn(2,   h-1, 10,1, 0x88FF88,0x000000, "Cancel")
@@ -135,9 +143,9 @@ function M.run(cfg, saveFn)
         if v~="" then for i=#t.DENY,1,-1 do if t.DENY[i]==v then table.remove(t.DENY,i) end end end
       elseif pointIn(rSide,x,ty) then
         local order={"bottom","top","north","south","west","east"}
-        local cur = util.sideName(util.sideId(t.OUT_SIDE))
+        local cur = util.sideName(util.sideId(t.REDSTONE_SIDE))
         local idx=1; for i,n in ipairs(order) do if n==cur then idx=i end end
-        idx = idx % #order + 1; t.OUT_SIDE = order[idx]
+        idx = idx % #order + 1; t.REDSTONE_SIDE = order[idx]
       elseif pointIn(rCancel,x,ty) then
         return nil
       elseif pointIn(rSave,x,ty) then
