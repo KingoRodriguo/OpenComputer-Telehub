@@ -58,31 +58,139 @@ end
 
 -- ---------- HTTP get ----------
 local function http_get(url, timeout)
-    timeout = timeout or 25
-    log("HTTP GET "..url)
-    local ok, inet = pcall(require,"internet")
-    if ok and inet and inet.request then
-        local req = inet.request(url, nil, {["User-Agent"]="telehub-update"})
-        if req then
-            local data = ""
-            for chunk in req do
-                if chunk then data = data .. chunk end
-                if computer.uptime() > timeout then return nil,"timeout" end
-            end
-            if #data>0 then return data end
+  local deadline = computer.uptime() + (timeout or 25)
+  log("HTTP GET "..url)
+
+  local function read_all_from_handle(h)
+    if type(h.finishConnect) == "function" then pcall(h.finishConnect, h) end
+    local data = ""
+
+    if type(h.read) == "function" then
+      while true do
+        local ok, chunk = pcall(h.read, h, math.huge)
+        if not ok or not chunk then break end
+        data = data .. chunk
+        if computer.uptime() > deadline then
+          if type(h.close) == "function" then pcall(h.close, h) end
+          return nil, "timeout"
         end
-    end
-    -- fallback wget
-    if shell_ok and shell and shell.execute then
-        local tmp = "/home/_http_tmp_"..tostring(math.random(1,1e9))
-        local ok = shell.execute(string.format("wget %q %q", url, tmp))
-        if ok then
-            local data = readFile(tmp) or ""
-            pcall(fs.remove,tmp)
-            if #data>0 then return data end
+      end
+      if #data == 0 then
+        while true do
+          local ok, chunk = pcall(h.read, h)
+          if not ok or not chunk then break end
+          data = data .. chunk
+          if computer.uptime() > deadline then
+            if type(h.close) == "function" then pcall(h.close, h) end
+            return nil, "timeout"
+          end
         end
+      end
+      if type(h.close) == "function" then pcall(h.close, h) end
+      return data
     end
-    return nil,"http_failed"
+
+    local mt = getmetatable(h)
+    if type(mt) == "table" and type(mt.__call) == "function" then
+      while true do
+        local ok, chunk = pcall(h)
+        if not ok or not chunk then break end
+        data = data .. chunk
+        if computer.uptime() > deadline then
+          if type(h.close) == "function" then pcall(h.close, h) end
+          return nil, "timeout"
+        end
+      end
+      if type(h.close) == "function" then pcall(h.close, h) end
+      return data
+    end
+
+    local okIter, collected = pcall(function()
+      local d = ""
+      for chunk in h do
+        if chunk then d = d .. chunk end
+        if computer.uptime() > deadline then return nil end
+      end
+      return d
+    end)
+    if okIter and collected then return collected end
+
+    return nil, "unsupported_handle_shape"
+  end
+
+  -- 1) Module 'internet'
+  do
+    local ok_lib, inet = pcall(require, "internet")
+    if ok_lib and inet and type(inet.request) == "function" then
+      local req = inet.request(url, nil, {["User-Agent"]="telehub-update"})
+      if req then
+        if type(req) == "function" then
+          local data = ""
+          for chunk in req do
+            if chunk then data = data .. chunk end
+            if computer.uptime() > deadline then return nil, "timeout" end
+          end
+          if #data > 0 then
+            log("Downloaded "..#data.." bytes (internet iterator)")
+            return data
+          end
+        else
+          local data, err = read_all_from_handle(req)
+          if data and #data > 0 then
+            log("Downloaded "..#data.." bytes (internet handle)")
+            return data
+          elseif err then
+            log("internet.handle read failed: "..tostring(err))
+          end
+        end
+      end
+    end
+  end
+
+  -- 2) Fallback composant
+  do
+    local ok_comp, comp = pcall(require, "component")
+    if ok_comp and comp and comp.internet and type(comp.internet.request) == "function" then
+      local h = comp.internet.request(url, nil, {["User-Agent"]="telehub-update"})
+      if h then
+        local data = ""
+        for chunk in h do
+          if chunk then data = data .. chunk end
+          if computer.uptime() > deadline then return nil, "timeout" end
+        end
+        if #data > 0 then
+          log("Downloaded "..#data.." bytes (component)")
+          return data
+        end
+      end
+    end
+  end
+
+  -- 3) Dernier recours : utiliser 'wget' système vers un fichier temporaire
+  log("HTTP empty via API; trying wget fallback")
+  local tmp = "/home/_http_tmp_"..tostring(math.random(1,1e9))
+  local shell_ok, shell = pcall(require, "shell")
+  if not shell_ok or not shell or type(shell.execute) ~= "function" then
+    return nil, "empty_response"
+  end
+  -- Note: syntaxe OpenOS: wget <url> <dest>
+  local ok = shell.execute(string.format("wget %q %q", url, tmp))
+  if not ok then
+    return nil, "empty_response"
+  end
+  local f = io.open(tmp, "r")
+  if not f then
+    return nil, "empty_response"
+  end
+  local data = f:read("*a") or ""
+  f:close()
+  pcall(fs.remove, tmp)
+  if #data > 0 then
+    log("Downloaded "..#data.." bytes (wget fallback)")
+    return data
+  end
+
+  return nil, "empty_response"
 end
 
 -- ---------- version ----------
@@ -153,6 +261,7 @@ end
 -- ---------- main ----------
 io.write("[*] telehub manual updater\n")
 assert(REPO:match("^https?://"), "--repo must be a valid URL")
+print("Repo: "..REPO .. "  |  Manifest: "..MANIFEST)
 local man = fetchManifest(REPO,MANIFEST)
 local cur = getLocalVersion() or "0.0.0"
 log("Current version: "..cur.." | Remote: "..tostring(man.version or "?"))
