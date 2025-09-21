@@ -1,3 +1,9 @@
 To install
 
 wget https://raw.githubusercontent.com/KingoRodriguo/OpenComputer-Telehub/main/setup.lua && setup
+
+To update
+
+telehub_update
+    --force (redownlad even if no update)
+    --dev   (download the dev branch version)
