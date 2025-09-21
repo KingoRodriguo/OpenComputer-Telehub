@@ -1,6 +1,7 @@
 return {
   version = "0.1.6",
   files = {
+    ["etc/rc.lua"]                       = "/etc/rc.lua",
     ["usr/bin/telehub_node.lua"]         = "/usr/bin/telehub_node.lua",
     ["usr/bin/telehub_update.lua"]       = "/usr/bin/telehub_update.lua",
     ["usr/bin/telehub_uninstaller.lua"]  = "/usr/bin/telehub_uninstaller.lua",
