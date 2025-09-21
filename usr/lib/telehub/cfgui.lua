@@ -44,21 +44,27 @@ local function listToStr(t)
     return table.concat(b,", ")
 end
 
--- Fonction pour dessiner dynamiquement les options
-local function drawOptions(options, w)
-    local startY = 5
+-- Dessine une ligne composée de plusieurs éléments
+local function drawLine(line, y)
+    local x = 3
     local drawn = {}
-    for i,opt in ipairs(options) do
-        local y = startY + (i-1)*2
-        gpu.set(3, y, opt.label or "-")
-        if opt.type == "pill" then
-            drawn[i] = drawPill(w-10, y, opt.text, opt.bg, opt.fg)
-        elseif opt.type == "btn" then
-            drawn[i] = drawBtn(w-10, y, opt.width or 10, 1, opt.bg, opt.fg, opt.text)
-        elseif opt.type == "text" then
-            gpu.set(22, y, tostring(opt.value or "-"))
+    for i, el in ipairs(line) do
+        local r
+        if el.type=="text" then
+            gpu.set(x,y,tostring(el.value or ""))
+            r={x1=x,y1=y,x2=x+W(el.value or "")-1,y2=y,element=el}
+            x = r.x2 + 2
+        elseif el.type=="pill" then
+            r = drawPill(x,y,el.text or "", el.bg or 0x555555, el.fg or 0xFFFFFF)
+            r.element = el
+            x = r.x2 + 2
+        elseif el.type=="btn" then
+            local w = el.width or 10
+            r = drawBtn(x,y,w,1, el.bg or 0x555555, el.fg or 0xFFFFFF, el.text or "")
+            r.element = el
+            x = r.x2 + 2
         end
-        opt._y = y -- sauvegarde la position pour les interactions
+        drawn[#drawn+1] = r
     end
     return drawn
 end
@@ -66,38 +72,80 @@ end
 function M.run(cfg, saveFn)
     local t = util.deepcopy(cfg)
     local w,h = gpu.getResolution()
-    local running = true
 
-    -- Table des options dynamiques
-    local options = {
-        {label="[owner_name]", type="pill", text="Edit", bg=0x88FF88, fg=0x000000, value=t.OWNER},
-        {label="Destination name :", type="pill", text="Edit", bg=0x88FF88, fg=0x000000, value=t.DEST_NAME},
-        {label="[policy_state]", type="pill", text="Allowed", bg=0x55AAFF, fg=0x000000, value=t.ACCESS_POLICY},
-        {label="allow_list", type="btn", text="Add", bg=0x555555, fg=0xFFFFFF},
-        {label="deny_list", type="btn", text="Add", bg=0x555555, fg=0xFFFFFF},
-        {label="Redstone side :", type="pill", text="cycle", bg=0x555555, fg=0xFFFFFF, value=t.REDSTONE_SIDE},
-        {label="Transposer Teleposer side :", type="pill", text="cycle", bg=0x555555, fg=0xFFFFFF, value=t.TRANSPOSER_TELEPOSER_SIDE},
-        {label="Transposer Storage side :", type="pill", text="cycle", bg=0x555555, fg=0xFFFFFF, value=t.TRANSPOSER_STORAGE_SIDE},
+    -- Définir l'interface par lignes
+    local lines = {
+        -- Ligne 1 : Owner
+        {
+            {type="text", value="[owner_name]"},
+            {type="pill", text="Edit", value=t.OWNER, bg=0x88FF88, fg=0x000000},
+        },
+        -- Ligne 2 : Destination
+        {
+            {type="text", value="Destination name :"},
+            {type="pill", text="Edit", value=t.DEST_NAME, bg=0x88FF88, fg=0x000000},
+        },
+        -- Ligne 3 : Policy
+        {
+            {type="text", value="[policy_state]"},
+            {type="pill", text="Allowed", bg=0x55AAFF, fg=0x000000},
+            {type="pill", text="Deny", bg=0xCC4444, fg=0x000000},
+            {type="pill", text="Open", bg=0x88FF88, fg=0x000000},
+        },
+        -- Ligne 4 : Allow list
+        {
+            {type="text", value="allow_list"},
+            {type="btn", text="Add", bg=0x555555, fg=0xFFFFFF},
+            {type="btn", text="Del", bg=0x555555, fg=0xFFFFFF},
+            {type="text", value=listToStr(t.ALLOW)},
+        },
+        -- Ligne 5 : Deny list
+        {
+            {type="text", value="deny_list"},
+            {type="btn", text="Add", bg=0x555555, fg=0xFFFFFF},
+            {type="btn", text="Del", bg=0x555555, fg=0xFFFFFF},
+            {type="text", value=listToStr(t.DENY)},
+        },
+        -- Ligne 6 : Redstone side
+        {
+            {type="text", value="Redstone side :"},
+            {type="pill", text="cycle", value=t.REDSTONE_SIDE, bg=0x555555, fg=0xFFFFFF},
+        },
+        -- Ligne 7 : Teleposer side
+        {
+            {type="text", value="Teleposer side :"},
+            {type="text", value=t.TRANSPOSER_TELEPOSER_SIDE},
+        },
+        -- Ligne 8 : Storage side
+        {
+            {type="text", value="Storage side :"},
+            {type="text", value=t.TRANSPOSER_STORAGE_SIDE},
+        },
     }
 
-    while running do
+    while true do
         term.clear()
-        -- Titre
         local title = "Configuration"
-        gpu.set(util.centerX(gpu, title), 2, title)
+        gpu.set(util.centerX(gpu, title),2,title)
         gpu.fill(2,3,w-2,1,"─")
 
-        -- Dessiner options
-        drawOptions(options, w)
+        local drawnElements = {}
+        for i,line in ipairs(lines) do
+            local y = 5 + (i-1)*2
+            local drawn = drawLine(line, y)
+            for _,d in ipairs(drawn) do
+                drawnElements[#drawnElements+1] = d
+            end
+        end
 
         -- Bas : Cancel / Save
-        local rCancel = drawBtn(2, h-1, 10,1, 0x88FF88,0x000000, "Cancel")
-        local rSave   = drawBtn(w-11,h-1, 10,1, 0x88FF88,0x000000, "Save")
+        local rCancel = drawBtn(2,h-1,10,1,0x88FF88,0x000000,"Cancel")
+        local rSave   = drawBtn(w-11,h-1,10,1,0x88FF88,0x000000,"Save")
 
         -- Version
         local v = upd.getLocalVersion() or "0.0.0"
         local vstr = "v"..v
-        gpu.set(w - W(vstr), h, vstr)
+        gpu.set(w-W(vstr),h,vstr)
 
         local ev = {event.pull()}
         if ev[1]=="interrupted" then return nil end
@@ -107,39 +155,49 @@ function M.run(cfg, saveFn)
         elseif ev[1]=="touch" then
             local _,_,x,ty = table.unpack(ev)
 
-            -- Boucle sur les options pour gérer l'interaction
-            for i,opt in ipairs(options) do
-                if pointIn(opt, x, ty) then
-                    if opt.label=="[owner_name]" then
-                        local v = prompt("Owner", t.OWNER); t.OWNER = (v=="" and nil or v)
-                    elseif opt.label=="Destination name :" then
-                        t.DEST_NAME = prompt("Destination name", t.DEST_NAME)
-                    elseif opt.label=="[policy_state]" then
-                        t.ACCESS_POLICY = "owner_plus_allow"
-                    elseif opt.label=="Redstone side :" then
-                        local order={"bottom","top","north","south","west","east"}
-                        local cur = util.sideName(util.sideId(t.REDSTONE_SIDE))
-                        local idx=1; for i,n in ipairs(order) do if n==cur then idx=i end end
-                        idx = idx % #order + 1; t.REDSTONE_SIDE = order[idx]
-                    elseif opt.label=="allow_list" then
-                        local v = prompt("Add to ALLOW")
-                        if v~="" then
-                            local ex=false; for _,n in ipairs(t.ALLOW) do if n==v then ex=true end end
-                            if not ex then table.insert(t.ALLOW, v) end
+            for _,d in ipairs(drawnElements) do
+                local el = d.element
+                if pointIn(d,x,ty) then
+                    if el.type=="pill" then
+                        if el.text=="Edit" then
+                            el.value = prompt(el.text, el.value)
+                            -- Mettre à jour la valeur dans la table t
+                            if el == lines[1][2] then t.OWNER = el.value
+                            elseif el == lines[2][2] then t.DEST_NAME = el.value
+                            elseif el == lines[6][2] then
+                                local order={"bottom","top","north","south","west","east"}
+                                local cur = util.sideName(util.sideId(t.REDSTONE_SIDE))
+                                local idx=1; for i,n in ipairs(order) do if n==cur then idx=i end end
+                                idx = idx % #order + 1; t.REDSTONE_SIDE = order[idx]
+                                el.value = t.REDSTONE_SIDE
+                            end
+                        else
+                            t.ACCESS_POLICY = el.text
                         end
-                    elseif opt.label=="deny_list" then
-                        local v = prompt("Add to DENY")
-                        if v~="" then
-                            local ex=false; for _,n in ipairs(t.DENY) do if n==v then ex=true end end
-                            if not ex then table.insert(t.DENY, v) end
+                    elseif el.type=="btn" then
+                        if el.text=="Add" then
+                            if lines[4][2]==el then
+                                local v = prompt("Add to ALLOW")
+                                if v~="" then local ex=false; for _,n in ipairs(t.ALLOW) do if n==v then ex=true end end; if not ex then table.insert(t.ALLOW,v) end end
+                            elseif lines[5][2]==el then
+                                local v = prompt("Add to DENY")
+                                if v~="" then local ex=false; for _,n in ipairs(t.DENY) do if n==v then ex=true end end; if not ex then table.insert(t.DENY,v) end end
+                            end
+                        elseif el.text=="Del" then
+                            if lines[4][3]==el then
+                                local v = prompt("Remove from ALLOW")
+                                if v~="" then for i=#t.ALLOW,1,-1 do if t.ALLOW[i]==v then table.remove(t.ALLOW,i) end end end
+                            elseif lines[5][3]==el then
+                                local v = prompt("Remove from DENY")
+                                if v~="" then for i=#t.DENY,1,-1 do if t.DENY[i]==v then table.remove(t.DENY,i) end end end
+                            end
                         end
                     end
                 end
             end
 
             if pointIn(rCancel,x,ty) then return nil
-            elseif pointIn(rSave,x,ty) then
-                saveFn(t); return util.deepcopy(t)
+            elseif pointIn(rSave,x,ty) then saveFn(t); return util.deepcopy(t)
             end
         end
     end
