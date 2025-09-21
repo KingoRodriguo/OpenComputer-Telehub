@@ -78,11 +78,13 @@ function M.run(cfg, saveFn)
         -- Ligne 1 : Owner
         {
             {type="text", value="[owner_name]"},
+            {type="text", value=t.OWNER},
             {type="pill", text="Edit", value=t.OWNER, bg=0x88FF88, fg=0x000000},
         },
         -- Ligne 2 : Destination
         {
             {type="text", value="Destination name :"},
+            {type="text", value=t.DEST_NAME},
             {type="pill", text="Edit", value=t.DEST_NAME, bg=0x88FF88, fg=0x000000},
         },
         -- Ligne 3 : Policy
