@@ -78,7 +78,7 @@ function M.run(cfg, saveFn)
         -- Ligne 1 : Owner
         {
             {type="text", value="[owner_name]"},
-            {type="text", value=t.OWNER},
+            {type="text", value=t.OWNER or "None"},
             {type="pill", text="Edit", value=t.OWNER, bg=0x88FF88, fg=0x000000},
         },
         -- Ligne 2 : Destination
