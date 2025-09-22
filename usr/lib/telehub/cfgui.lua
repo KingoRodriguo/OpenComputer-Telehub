@@ -90,6 +90,7 @@ function M.run(cfg, saveFn)
         -- Ligne 3 : Policy
         {
             {type="text", value="[policy_state]"},
+            {type="text", value=t.ACCESS_POLICY},
             {type="pill", text="Allowed", bg=0x55AAFF, fg=0x000000},
             {type="pill", text="Deny", bg=0xCC4444, fg=0x000000},
             {type="pill", text="Open", bg=0x88FF88, fg=0x000000},
