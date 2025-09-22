@@ -1,0 +1,81 @@
+-- UI Design for V1.0 Telehub --
+
+-- Main screen --
+
+    -- Display destination_name of current selected destination
+    -- Display owner_name of the current selected destination
+    -- Display "TELEPORT" button
+        -- Green if allowed
+        -- Red if not allowed
+    -- For current destination. If current player is owner or admin
+        -- Show [Config Screen]
+    -- Display "Destinations" button
+        -- Show [Destinations Screen]
+
+-- Config screen --
+
+    -- Display "Configuration" title
+    -- Display "Owner name" field with "Edit" button
+        -- On press "Edit", show keyboard to edit owner name
+    -- Display "Destination name" field with "Edit" button
+        -- On press "Edit", show keyboard to edit destination name
+    -- Display "Access policy" field with 'Edit' button
+        -- On press "Edit", show options: "Open", "Close", "Allowed only"
+    -- Display "Allow list" field with "Edit" button
+        -- On press "Edit", show options: "Add", "Remove"
+            -- On "Add", show keyboard to enter a name to add to the allow list
+            -- On "Remove", show keyboard to enter a name to remove from the allow list
+    -- Display "Deny list" field with "Edit" button
+        -- On press "Edit", show options: "Add", "Remove"
+            -- On "Add", show keyboard to enter a name to add to the deny list
+            -- On "Remove", show keyboard to enter a name to remove from the deny list
+    -- If user is ADMIN
+        -- Display "Advanced config" button
+            -- On press, show [Advanced Config Screen]
+    -- Display "Back" button to return to Main screen
+        -- On press, show [Main Screen]
+    -- Display "Save" button to save changes
+        -- On press, save changes and return to Main screen
+
+-- Advanced Config screen --
+
+    -- Display "Advanced Configuration" title
+    -- Display "Redstone side" field with "Edit" button
+        -- On press "Edit", show options: "top", "bottom", "left", "right", "front", "back"
+    -- Display "Teleposer side" field with "Edit" button
+        -- On press "Edit", show options: "top", "bottom", "left", "right", "front", "back"
+    -- Display "Storage side" field with "Edit" button
+        -- On press "Edit", show options: "top", "bottom", "left", "right", "front", "back"
+    -- Display "Back" button to return to Config screen
+        -- On press, show [Config Screen]
+    -- Display "Save" button to save changes
+        -- On press, save changes and return to Config screen
+
+-- Destinations screen --
+
+    -- Display "Destinations" title
+    -- Display list of all destinations available to the user
+        -- On selecting a destination, set it as the current destination and return to Main screen
+    -- Display "Back" button to return to Main screen
+        -- On press, show [Main Screen]
+    -- Display "Add Destination" button
+        -- On press, show [Add Destination Screen]
+    -- If user is ADMIN
+        -- Display "Advanced" button
+            -- On press, show [Admin Destinations Screen]
+
+-- Admin Destinations screen --
+
+    -- Display "Admin Destinations" title
+    -- Display list of all destinations
+        -- On selecting a destination, show [Main Screen] with that destination selected
+    -- Display "Back" button to return to Destinations screen
+        -- On press, show [Destinations Screen]
+
+-- Add Destination screen --
+
+    -- Display "Add Destination" title
+    -- Display info on how to add a destination
+    -- Display "Back" button to return to Destinations screen
+        -- On press, show [Destinations Screen]
+
